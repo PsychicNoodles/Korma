@@ -103,6 +103,15 @@
    :order []
    :results :results})
 
+
+(defn merge-into*
+  "Create an empty merge-into query"
+  [ent]
+  (make-query ent {:type :merge-into
+                   :keys []
+                   :values []
+                   :results :keys}))
+
 ;;*****************************************************
 ;; Query macros
 ;;*****************************************************
@@ -195,6 +204,12 @@
   [& body]
   (make-query-then-exec #'intersect* body))
 
+(defmacro merge-into
+  "Creates a merge-into query, applies any modifying functions in the body and
+  then executes it. `ent` is either a string or an entity created by defentity."
+  [ent & body]
+  (make-query-then-exec #'merge-into* body ent))
+
 ;;*****************************************************
 ;; Query parts
 ;;*****************************************************
@@ -286,8 +301,8 @@
     (order query field :ASC)))
 
 (defn values
-  "Add records to an insert clause. values can either be a vector of maps or a
-  single map.
+  "Add records to an insert or merge-into clause. values can either be a vector
+  of maps or a single map.
 
   (values query [{:name \"john\"} {:name \"ed\"}])"
   [query values]
@@ -373,6 +388,12 @@
   "Adds a group of queries to a union, union-all or intersect"
   [query & queries]
   (update-in query [:queries] utils/vconcat queries))
+
+(defn merge-keys
+  [query merge-keys]
+  (update-in query [:keys] utils/vconcat (if (coll? merge-keys)
+                                           merge-keys
+                                           [merge-keys])))
 
 ;;*****************************************************
 ;; Other sql
@@ -470,6 +491,7 @@
     (let [prep-fn (apply comp preps)]
       (case (:type query)
         :insert (update-in query [:values] #(map prep-fn %))
+        :merge-into (update-in query [:values] #(map prep-fn %))
         :update (update-in query [:set-fields] prep-fn)
         query))
     query))

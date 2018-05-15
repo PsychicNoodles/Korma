@@ -308,6 +308,18 @@
                    noop-query)]
     (assoc query :sql-str neue-sql)))
 
+(defn sql-merge-into [query]
+  (let [ merge-keys (map field-identifier (sort (distinct (:keys query))))
+        merge-keys-clause (utils/wrap (utils/comma-separated merge-keys))
+        ins-keys (sort (distinct (mapcat keys (:values query))))
+        keys-clause (utils/comma-separated (map field-identifier ins-keys))
+        ins-values (insert-values-clause ins-keys (:values query))
+        values-clause (utils/comma-separated ins-values)
+        neue-sql (if-not (empty? ins-keys)
+                   (str "MERGE INTO " (table-str query) " " (utils/wrap keys-clause) " KEY " merge-keys-clause " VALUES " values-clause)
+                   noop-query)]
+    (assoc query :sql-str neue-sql)))
+
 ;;*****************************************************
 ;; Sql parts
 ;;*****************************************************
@@ -410,4 +422,6 @@
                  sql-delete
                  sql-where)
      :insert (-> query
-                 sql-insert))))
+                 sql-insert)
+     :merge-into (-> query
+                     sql-merge-into))))
